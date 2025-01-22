@@ -1,22 +1,33 @@
-import numpy as np
 import streamlit as st
-import pickle
+import numpy as np
 import os
 from pathlib import Path
 
-# Configure the app
+
+try:
+    import sklearn
+except ImportError:
+    st.error("Missing required package 'scikit-learn'. Please install it using: pip install scikit-learn")
+    st.stop()
+
+try:
+    import pickle
+except ImportError:
+    st.error("Missing required package 'pickle-mixin'. Please install it using: pip install pickle-mixin")
+    st.stop()
+
+
 st.set_page_config(
     page_title="Book Recommender",
     layout="wide"
 )
 
 # Define the data loading function
+@st.cache_resource
 def load_model_files():
     try:
-        # Get the absolute path to the directory containing this script
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Load the models with explicit paths
         model = pickle.load(open(os.path.join(current_dir, 'model.pkl'), 'rb'))
         books_name = pickle.load(open(os.path.join(current_dir, 'books_name.pkl'), 'rb'))
         final_rating = pickle.load(open(os.path.join(current_dir, 'final_rating.pkl'), 'rb'))
@@ -65,7 +76,8 @@ def main():
     st.title("Book Recommendation System")
     
     # Load the model files
-    model, books_name, final_rating, book_pivot = load_model_files()
+    with st.spinner("Loading model files..."):
+        model, books_name, final_rating, book_pivot = load_model_files()
     
     # Check if model loading was successful
     if model is None or books_name is None or final_rating is None or book_pivot is None:
@@ -73,7 +85,7 @@ def main():
         st.stop()
         return
     
-    # Create the book selection dropdown
+    
     selected_book = st.selectbox(
         "Type or select a book you like:",
         books_name
@@ -89,7 +101,7 @@ def main():
                     final_rating
                 )
 
-                # Display recommendations in columns
+                
                 cols = st.columns(5)
                 for idx, col in enumerate(cols, 1):
                     with col:

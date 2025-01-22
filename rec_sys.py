@@ -5,7 +5,7 @@ from pathlib import Path
 
 class BookRecommender:
     def __init__(self):
-        """Initialize the BookRecommender system."""
+        
         self.model = None
         self.books_name = None
         self.final_rating = None
@@ -13,7 +13,7 @@ class BookRecommender:
         self.load_artifacts()
 
     def load_artifacts(self):
-        """Load all required pickle files for the recommendation system."""
+        
         try:
             base_path = Path(__file__).parent
             self.model = pickle.load(open(base_path / 'model.pkl', 'rb'))
@@ -30,16 +30,6 @@ class BookRecommender:
             raise
 
     def recommend_book(self, book_name, num_recommendations=5):
-        """
-        Generate book recommendations based on input book name.
-        
-        Args:
-            book_name (str): Name of the book to base recommendations on
-            num_recommendations (int): Number of recommendations to return
-            
-        Returns:
-            list: List of recommended book titles
-        """
         try:
             # Verify book exists in dataset
             if book_name not in self.book_pivot.index:
@@ -67,19 +57,9 @@ class BookRecommender:
             return f"An error occurred: {str(e)}"
 
     def get_available_books(self):
-        """Return list of all available books in the system."""
         return list(self.book_pivot.index)
 
     def get_book_details(self, book_name):
-        """
-        Get additional details about a specific book.
-        
-        Args:
-            book_name (str): Name of the book
-            
-        Returns:
-            dict: Book details if found, None otherwise
-        """
         try:
             book_idx = np.where(self.final_rating['Title'] == book_name)[0][0]
             book_data = self.final_rating.iloc[book_idx]
@@ -92,20 +72,15 @@ class BookRecommender:
 
 
 def main():
-    """Main function to demonstrate the BookRecommender system."""
     try:
-        # Initialize recommender
         print("Initializing Book Recommender System...")
         recommender = BookRecommender()
         
-        # Example book
         book_name = "Harry Potter and the Chamber of Secrets (Book 2)"
         
-        # Get recommendations
         print(f"\nGenerating recommendations for: {book_name}")
         recommendations = recommender.recommend_book(book_name)
         
-        # Print results
         if isinstance(recommendations, list):
             print("\nRecommended Books:")
             for i, book in enumerate(recommendations, 1):
@@ -115,8 +90,7 @@ def main():
                 else:
                     print(f"{i}. {book}")
         else:
-            print(recommendations)  # Print error message if not a list
-
+            print(recommendations)
     except Exception as e:
         print(f"Program failed: {str(e)}")
         print("\nPlease ensure all required pickle files are present in the same directory:")
