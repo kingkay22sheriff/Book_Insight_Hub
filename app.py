@@ -1,15 +1,35 @@
 import numpy as np
 import streamlit as st
-import pickle 
+import pickle
+import os
+from pathlib import Path
 
-st.header("Books Recommendation System using Machine Learning")
-model = pickle.load(open('model.pkl', 'rb'))
-books_name = pickle.load(open('books_name.pkl', 'rb'))
-final_rating = pickle.load(open('final_rating.pkl', 'rb'))
-book_pivot = pickle.load(open('book_pivot.pkl', 'rb'))
+# Configure the app
+st.set_page_config(
+    page_title="Book Recommender",
+    layout="wide"
+)
 
+# Define the data loading function
+def load_model_files():
+    try:
+        # Get the absolute path to the directory containing this script
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Load the models with explicit paths
+        model = pickle.load(open(os.path.join(current_dir, 'model.pkl'), 'rb'))
+        books_name = pickle.load(open(os.path.join(current_dir, 'books_name.pkl'), 'rb'))
+        final_rating = pickle.load(open(os.path.join(current_dir, 'final_rating.pkl'), 'rb'))
+        book_pivot = pickle.load(open(os.path.join(current_dir, 'book_pivot.pkl'), 'rb'))
+        
+        return model, books_name, final_rating, book_pivot
+    except Exception as e:
+        st.error(f"Error loading model files: {str(e)}")
+        st.error(f"Current directory: {current_dir}")
+        st.error(f"Files in directory: {os.listdir(current_dir)}")
+        return None, None, None, None
 
-def fetch_poster(suggestion):
+def fetch_poster(suggestion, book_pivot, final_rating):
     books_name = []
     ids_index = []
     poster_url = []
@@ -17,57 +37,70 @@ def fetch_poster(suggestion):
     for book_id in suggestion:
         books_name.append(book_pivot.index[book_id])
 
-
     for name in books_name[0]:
         ids = np.where(final_rating['Title'] == name)[0][0]
         ids_index.append(ids)
 
-    for ids in ids_index:
-        url = final_rating.iloc[ids]['Img_url']
+    for idx in ids_index:
+        url = final_rating.iloc[idx]['Img_url']
         if isinstance(url, str):
             poster_url.append(url)
 
-
     return poster_url
 
-
-def recommend_books(book_name):
-    book_list = []
+def recommend_books(book_name, model, book_pivot, final_rating):
+    books_list = []
     book_id = np.where(book_pivot.index == book_name)[0][0]
-    distance, suggestion = model.kneighbors(book_pivot.iloc[book_id,:].values.reshape(1,-1), n_neighbors=6)
+    distances, suggestions = model.kneighbors(book_pivot.iloc[book_id,:].values.reshape(1,-1), n_neighbors=6)
 
-    poster_url = fetch_poster(suggestion)
-
-    for i in range(len(suggestion)):
-        books = book_pivot.index[suggestion[i]]
+    poster_url = fetch_poster(suggestions, book_pivot, final_rating)
+    
+    for i in range(len(suggestions)):
+        books = book_pivot.index[suggestions[i]]
         for j in books:
-            book_list.append(j)
-    return book_list, poster_url
+            books_list.append(j)
+    return books_list, poster_url
 
+def main():
+    st.title("Book Recommendation System")
     
+    # Load the model files
+    model, books_name, final_rating, book_pivot = load_model_files()
     
-selected_books = st.selectbox(
-    "Type or Select a Book",
-    books_name,
-    help="Choose a book from the dropdown to get recommendations."
-)
+    # Check if model loading was successful
+    if model is None or books_name is None or final_rating is None or book_pivot is None:
+        st.error("Failed to load required model files. Please check if all files exist in the correct location.")
+        st.stop()
+        return
+    
+    # Create the book selection dropdown
+    selected_book = st.selectbox(
+        "Type or select a book you like:",
+        books_name
+    )
 
-if st.button("Recommend"):
-    recommend_books, poster_url = recommend_books(selected_books)
-    col1, col2, col3, col4, col5 = st.columns(5)
+    if st.button('Show Recommendations'):
+        with st.spinner("Generating recommendations..."):
+            try:
+                recommended_books, poster_urls = recommend_books(
+                    selected_book, 
+                    model, 
+                    book_pivot, 
+                    final_rating
+                )
 
-    with col1:
-        st.text(recommend_books[1])
-        st.image(poster_url[1])
-    with col2:
-        st.text(recommend_books[2])
-        st.image(poster_url[2])
-    with col3:
-        st.text(recommend_books[3])
-        st.image(poster_url[3])
-    with col4:
-        st.text(recommend_books[4])
-        st.image(poster_url[4])
-    with col5:
-        st.text(recommend_books[5])
-        st.image(poster_url[5])
+                # Display recommendations in columns
+                cols = st.columns(5)
+                for idx, col in enumerate(cols, 1):
+                    with col:
+                        st.text(recommended_books[idx])
+                        try:
+                            st.image(poster_urls[idx])
+                        except Exception as e:
+                            st.error("Error loading image")
+                            
+            except Exception as e:
+                st.error(f"Error generating recommendations: {str(e)}")
+
+if __name__ == "__main__":
+    main()
